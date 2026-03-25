@@ -14,7 +14,7 @@ function Dashboard({ isAdmin }) {
 
   // 🔹 Fetch latest data
   const fetchData = () => {
-    axios.get("http://localhost:8080/api/manpower")
+    axios.get("https://mak-mtg6.onrender.com/api/manpower")
       .then(res => {
         if (res.data && res.data.length > 0) {
           setData(res.data[res.data.length - 1]);
@@ -29,7 +29,7 @@ function Dashboard({ isAdmin }) {
 
   // 🔹 Submit new data (Admin only)
   const handleSubmit = () => {
-    axios.post("http://localhost:8080/api/manpower", form)
+    axios.post("https://mak-mtg6.onrender.com/api/manpower", form)
       .then(() => {
         alert("✅ Data saved!");
         setForm({
