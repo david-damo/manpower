@@ -43,7 +43,16 @@ function Dashboard({ isAdmin }) {
     if (!selectedDate) return data;
 
     const filtered = history.find(item =>
-      item.date && item.date.startsWith(selectedDate)
+      //item.date && item.date.startsWith(selectedDate)
+	  const getFilteredData = () => {
+		  if (!selectedDate) return data;
+
+		  const filtered = history.find(item =>
+			item.date === selectedDate
+		  );
+
+		  return filtered || null;
+		};
     );
 
     return filtered || null;
