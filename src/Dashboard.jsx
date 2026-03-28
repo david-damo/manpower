@@ -29,19 +29,26 @@ function Dashboard({ isAdmin }) {
   }, []);
 
   // 🔹 Submit new data (Admin only)
-  const handleSubmit = () => {
-    axios.post("https://mak-mtg6.onrender.com/api/manpower", form)
-      .then(() => {
-        alert("✅ Data saved!");
-        setForm({
-          hkFemalePresent: "",
-          hkMalePresent: "",
-          technicianPresent: "",
-          plumberPresent: ""
-        });
-        fetchData();
-      })
-      .catch(err => console.error("POST Error:", err));
+    const handleSubmit = () => {
+    const token = localStorage.getItem("auth");  // 👈 ADD HERE
+  
+    axios.post(
+      "https://mak-mtg6.onrender.com/api/admin/manpower",
+      form,
+      {
+        headers: {
+          Authorization: "Basic " + token   // 👈 ADD HERE
+        }
+      }
+    )
+    .then(() => {
+      alert("Data saved successfully");
+      fetchData(); // refresh dashboard
+    })
+    .catch(err => {
+      console.error("POST Error:", err);
+      alert("Unauthorized or error");
+    });
   };
 
   // 🔹 Show loading
