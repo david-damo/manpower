@@ -15,11 +15,12 @@ function Dashboard({ isAdmin }) {
   // 🔹 Fetch latest data
   const fetchData = () => {
     axios.get("https://mak-mtg6.onrender.com/api/manpower")
-      .then(res => {
-        if (res.data && res.data.length > 0) {
-          setData(res.data[res.data.length - 1]);
-        }
-      })
+  .then(res => {
+    console.log("API DATA 👉", res.data);  // 👈 ADD THIS
+    if (res.data && res.data.length > 0) {
+      setData(res.data[res.data.length - 1]);
+    }
+  })
       .catch(err => console.error("API Error:", err));
   };
 
