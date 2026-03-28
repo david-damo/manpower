@@ -12,6 +12,9 @@ function Dashboard({ isAdmin }) {
   const [data, setData] = useState(null);
   const [history, setHistory] = useState([]);
 
+  // ✅ NEW: Date filter state
+  const [selectedDate, setSelectedDate] = useState("");
+
   const [form, setForm] = useState({
     hkFemalePresent: "",
     hkMalePresent: "",
@@ -34,6 +37,19 @@ function Dashboard({ isAdmin }) {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // ✅ NEW: Filter logic
+  const getFilteredData = () => {
+    if (!selectedDate) return data;
+
+    const filtered = history.find(item =>
+      item.date && item.date.startsWith(selectedDate)
+    );
+
+    return filtered || null;
+  };
+
+  const filteredData = getFilteredData();
 
   // 🔹 Submit
   const handleSubmit = () => {
@@ -68,15 +84,15 @@ function Dashboard({ isAdmin }) {
     return <h2 style={{ textAlign: "center" }}>Loading...</h2>;
   }
 
-  // 🔹 Cards data
+  // 🔹 Use filtered data
   const chartData = [
-    { name: "HK Female", value: data.hkFemalePresent || 0 },
-    { name: "HK Male", value: data.hkMalePresent || 0 },
-    { name: "Technician", value: data.technicianPresent || 0 },
-    { name: "Plumber", value: data.plumberPresent || 0 }
+    { name: "HK Female", value: filteredData?.hkFemalePresent || 0 },
+    { name: "HK Male", value: filteredData?.hkMalePresent || 0 },
+    { name: "Technician", value: filteredData?.technicianPresent || 0 },
+    { name: "Plumber", value: filteredData?.plumberPresent || 0 }
   ];
 
-  // 🔹 Trend data
+  // 🔹 Trend data (unchanged)
   const trendData = history.slice(-7).map((item, index) => ({
     name: "Day " + (index + 1),
     hkFemale: item.hkFemalePresent || 0,
@@ -109,6 +125,17 @@ function Dashboard({ isAdmin }) {
             Logout
           </button>
         )}
+      </div>
+
+      {/* ✅ NEW: DATE FILTER */}
+      <div style={{ marginTop: "20px" }}>
+        <label>Select Date: </label>
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={e => setSelectedDate(e.target.value)}
+          style={inputStyle}
+        />
       </div>
 
       {/* 🔹 CARDS */}
@@ -197,8 +224,7 @@ function Dashboard({ isAdmin }) {
   );
 }
 
-// 🔹 STYLES
-
+// 🔹 Styles
 const cardStyle = {
   background: "#fff",
   padding: "20px",
@@ -216,8 +242,8 @@ const sectionStyle = {
 };
 
 const inputStyle = {
-  padding: "10px",
-  borderRadius: "8px",
+  padding: "8px",
+  borderRadius: "6px",
   border: "1px solid #ccc"
 };
 
