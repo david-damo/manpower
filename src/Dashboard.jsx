@@ -5,14 +5,16 @@ import {
   LineChart, Line, Legend
 } from "recharts";
 
+// ✅ NEW: Excel libraries
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+
 const API = "https://mak-mtg6.onrender.com";
 
 function Dashboard({ isAdmin }) {
 
   const [data, setData] = useState(null);
   const [history, setHistory] = useState([]);
-
-  // ✅ NEW: Date filter state
   const [selectedDate, setSelectedDate] = useState("");
 
   const [form, setForm] = useState({
@@ -38,21 +40,12 @@ function Dashboard({ isAdmin }) {
     fetchData();
   }, []);
 
-  // ✅ NEW: Filter logic
+  // 🔹 Date filter
   const getFilteredData = () => {
     if (!selectedDate) return data;
 
     const filtered = history.find(item =>
-      //item.date && item.date.startsWith(selectedDate)
-	  const getFilteredData = () => {
-		  if (!selectedDate) return data;
-
-		  const filtered = history.find(item =>
-			item.date === selectedDate
-		  );
-
-		  return filtered || null;
-		};
+      item.date === selectedDate
     );
 
     return filtered || null;
@@ -89,11 +82,39 @@ function Dashboard({ isAdmin }) {
     window.location.href = "/";
   };
 
+  // ✅ NEW: DOWNLOAD EXCEL FUNCTION
+  const downloadExcel = () => {
+
+    const exportData = history.map(item => ({
+      Date: item.date || "",
+      HK_Female: item.hkFemalePresent || 0,
+      HK_Male: item.hkMalePresent || 0,
+      Technician: item.technicianPresent || 0,
+      Plumber: item.plumberPresent || 0
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Manpower Data");
+
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array"
+    });
+
+    const file = new Blob([excelBuffer], {
+      type: "application/octet-stream"
+    });
+
+    saveAs(file, "manpower_data.xlsx");
+  };
+
   if (!data) {
     return <h2 style={{ textAlign: "center" }}>Loading...</h2>;
   }
 
-  // 🔹 Use filtered data
+  // 🔹 Chart data
   const chartData = [
     { name: "HK Female", value: filteredData?.hkFemalePresent || 0 },
     { name: "HK Male", value: filteredData?.hkMalePresent || 0 },
@@ -101,7 +122,7 @@ function Dashboard({ isAdmin }) {
     { name: "Plumber", value: filteredData?.plumberPresent || 0 }
   ];
 
-  // 🔹 Trend data (unchanged)
+  // 🔹 Trend data
   const trendData = history.slice(-7).map((item, index) => ({
     name: "Day " + (index + 1),
     hkFemale: item.hkFemalePresent || 0,
@@ -129,14 +150,22 @@ function Dashboard({ isAdmin }) {
         alignItems: "center"
       }}>
         <h2>📊 Manpower Dashboard</h2>
-        {isAdmin && (
-          <button onClick={handleLogout} style={btnStyle}>
-            Logout
+
+        <div>
+          {/* ✅ DOWNLOAD BUTTON */}
+          <button onClick={downloadExcel} style={btnStyle}>
+            Download Excel
           </button>
-        )}
+
+          {isAdmin && (
+            <button onClick={handleLogout} style={{ ...btnStyle, marginLeft: "10px" }}>
+              Logout
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* ✅ NEW: DATE FILTER */}
+      {/* 🔹 DATE FILTER */}
       <div style={{ marginTop: "20px" }}>
         <label>Select Date: </label>
         <input
@@ -174,7 +203,7 @@ function Dashboard({ isAdmin }) {
         </BarChart>
       </div>
 
-      {/* 🔹 TREND CHART */}
+      {/* 🔹 TREND */}
       <div style={sectionStyle}>
         <h3>📈 Last 7 Entries Trend</h3>
         <LineChart width={700} height={300} data={trendData}>
