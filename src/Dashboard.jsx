@@ -25,7 +25,7 @@ function Dashboard({ isAdmin }) {
       .then(res => {
         if (res.data && res.data.length > 0) {
           setHistory(res.data);
-          setData(res.data[res.data.length - 1]); // latest
+          setData(res.data[res.data.length - 1]);
         }
       })
       .catch(err => console.error("API Error:", err));
@@ -35,26 +35,26 @@ function Dashboard({ isAdmin }) {
     fetchData();
   }, []);
 
-  // 🔹 Submit (Admin)
+  // 🔹 Submit
   const handleSubmit = () => {
     const token = localStorage.getItem("auth");
 
-    axios.post(
-      `${API}/api/admin/manpower`,
-      form,
-      {
-        headers: {
-          Authorization: "Basic " + token
-        }
-      }
-    )
+    axios.post(`${API}/api/admin/manpower`, form, {
+      headers: { Authorization: "Basic " + token }
+    })
     .then(() => {
       alert("Data saved successfully");
+      setForm({
+        hkFemalePresent: "",
+        hkMalePresent: "",
+        technicianPresent: "",
+        plumberPresent: ""
+      });
       fetchData();
     })
     .catch(err => {
-      console.error("POST Error:", err);
-      alert("Unauthorized or error");
+      console.error(err);
+      alert("Error saving data");
     });
   };
 
@@ -64,12 +64,11 @@ function Dashboard({ isAdmin }) {
     window.location.href = "/";
   };
 
-  // 🔹 Loading
   if (!data) {
-    return <h2 style={{ textAlign: "center" }}>Loading data...</h2>;
+    return <h2 style={{ textAlign: "center" }}>Loading...</h2>;
   }
 
-  // 🔹 Latest snapshot (cards + bar chart)
+  // 🔹 Cards data
   const chartData = [
     { name: "HK Female", value: data.hkFemalePresent || 0 },
     { name: "HK Male", value: data.hkMalePresent || 0 },
@@ -77,7 +76,7 @@ function Dashboard({ isAdmin }) {
     { name: "Plumber", value: data.plumberPresent || 0 }
   ];
 
-  // 🔹 Last 7 entries trend
+  // 🔹 Trend data
   const trendData = history.slice(-7).map((item, index) => ({
     name: "Day " + (index + 1),
     hkFemale: item.hkFemalePresent || 0,
@@ -88,96 +87,107 @@ function Dashboard({ isAdmin }) {
 
   return (
     <div style={{
-      maxWidth: "1000px",
-      margin: "auto",
+      minHeight: "100vh",
+      background: "#f4f6f8",
       padding: "20px",
-      fontFamily: "Arial"
+      fontFamily: "Segoe UI"
     }}>
 
-      {/* 🔹 Header */}
+      {/* 🔹 HEADER */}
       <div style={{
+        background: "#ffffff",
+        padding: "15px 20px",
+        borderRadius: "12px",
+        boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center"
       }}>
-        <h1>📊 Manpower Dashboard</h1>
-        {isAdmin && <button onClick={handleLogout}>Logout</button>}
+        <h2>📊 Manpower Dashboard</h2>
+        {isAdmin && (
+          <button onClick={handleLogout} style={btnStyle}>
+            Logout
+          </button>
+        )}
       </div>
 
-      {/* 🔹 Cards */}
+      {/* 🔹 CARDS */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
-        gap: "15px",
+        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+        gap: "20px",
         marginTop: "20px"
       }}>
-        {chartData.map((item, index) => (
-          <div key={index} style={{
-            padding: "20px",
-            borderRadius: "12px",
-            background: "#f5f5f5",
-            textAlign: "center",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
-          }}>
-            <h4>{item.name}</h4>
+        {chartData.map((item, i) => (
+          <div key={i} style={cardStyle}>
+            <p style={{ color: "#777" }}>{item.name}</p>
             <h2>{item.value}</h2>
           </div>
         ))}
       </div>
 
-      {/* 🔹 Bar Chart */}
-      <h2 style={{ marginTop: "30px" }}>📊 Current Distribution</h2>
+      {/* 🔹 BAR CHART */}
+      <div style={sectionStyle}>
+        <h3>📊 Current Distribution</h3>
+        <BarChart width={700} height={300} data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="value" />
+        </BarChart>
+      </div>
 
-      <BarChart width={600} height={300} data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="name" />
-        <YAxis />
-        <Tooltip />
-        <Bar dataKey="value" />
-      </BarChart>
+      {/* 🔹 TREND CHART */}
+      <div style={sectionStyle}>
+        <h3>📈 Last 7 Entries Trend</h3>
+        <LineChart width={700} height={300} data={trendData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          <Line type="monotone" dataKey="hkFemale" />
+          <Line type="monotone" dataKey="hkMale" />
+          <Line type="monotone" dataKey="technician" />
+          <Line type="monotone" dataKey="plumber" />
+        </LineChart>
+      </div>
 
-      {/* 🔹 Trend Chart */}
-      <h2 style={{ marginTop: "40px" }}>📈 Last 7 Entries Trend</h2>
-
-      <LineChart width={700} height={300} data={trendData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="name" />
-        <YAxis />
-        <Tooltip />
-        <Legend />
-
-        <Line type="monotone" dataKey="hkFemale" />
-        <Line type="monotone" dataKey="hkMale" />
-        <Line type="monotone" dataKey="technician" />
-        <Line type="monotone" dataKey="plumber" />
-      </LineChart>
-
-      {/* 🔹 Admin Form */}
+      {/* 🔹 ADMIN FORM */}
       {isAdmin && (
-        <div style={{ marginTop: "40px" }}>
-          <h3>Add Data</h3>
+        <div style={sectionStyle}>
+          <h3>Add Manpower Data</h3>
 
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
+            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
             gap: "10px",
-            maxWidth: "400px"
+            maxWidth: "500px"
           }}>
-            <input placeholder="HK Female"
+            <input value={form.hkFemalePresent}
+              placeholder="HK Female"
               onChange={e => setForm({ ...form, hkFemalePresent: e.target.value })}
+              style={inputStyle}
             />
-            <input placeholder="HK Male"
+            <input value={form.hkMalePresent}
+              placeholder="HK Male"
               onChange={e => setForm({ ...form, hkMalePresent: e.target.value })}
+              style={inputStyle}
             />
-            <input placeholder="Technician"
+            <input value={form.technicianPresent}
+              placeholder="Technician"
               onChange={e => setForm({ ...form, technicianPresent: e.target.value })}
+              style={inputStyle}
             />
-            <input placeholder="Plumber"
+            <input value={form.plumberPresent}
+              placeholder="Plumber"
               onChange={e => setForm({ ...form, plumberPresent: e.target.value })}
+              style={inputStyle}
             />
           </div>
 
-          <button style={{ marginTop: "10px" }} onClick={handleSubmit}>
+          <button onClick={handleSubmit} style={{ ...btnStyle, marginTop: "10px" }}>
             Submit
           </button>
         </div>
@@ -186,5 +196,38 @@ function Dashboard({ isAdmin }) {
     </div>
   );
 }
+
+// 🔹 STYLES
+
+const cardStyle = {
+  background: "#fff",
+  padding: "20px",
+  borderRadius: "12px",
+  boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+  textAlign: "center"
+};
+
+const sectionStyle = {
+  background: "#fff",
+  marginTop: "20px",
+  padding: "20px",
+  borderRadius: "12px",
+  boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
+};
+
+const inputStyle = {
+  padding: "10px",
+  borderRadius: "8px",
+  border: "1px solid #ccc"
+};
+
+const btnStyle = {
+  padding: "8px 15px",
+  border: "none",
+  borderRadius: "8px",
+  background: "#007bff",
+  color: "#fff",
+  cursor: "pointer"
+};
 
 export default Dashboard;
