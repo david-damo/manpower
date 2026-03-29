@@ -4,8 +4,6 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   LineChart, Line, Legend
 } from "recharts";
-
-// ✅ NEW: Excel libraries
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
@@ -23,6 +21,9 @@ function Dashboard({ isAdmin }) {
     technicianPresent: "",
     plumberPresent: ""
   });
+
+  // ✅ Current date
+  const today = new Date().toISOString().split("T")[0];
 
   // 🔹 Fetch data
   const fetchData = () => {
@@ -82,9 +83,8 @@ function Dashboard({ isAdmin }) {
     window.location.href = "/";
   };
 
-  // ✅ NEW: DOWNLOAD EXCEL FUNCTION
+  // ✅ Excel Download
   const downloadExcel = () => {
-
     const exportData = history.map(item => ({
       Date: item.date || "",
       HK_Female: item.hkFemalePresent || 0,
@@ -95,7 +95,6 @@ function Dashboard({ isAdmin }) {
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-
     XLSX.utils.book_append_sheet(workbook, worksheet, "Manpower Data");
 
     const excelBuffer = XLSX.write(workbook, {
@@ -122,9 +121,16 @@ function Dashboard({ isAdmin }) {
     { name: "Plumber", value: filteredData?.plumberPresent || 0 }
   ];
 
-  // 🔹 Trend data
-  const trendData = history.slice(-7).map((item, index) => ({
-    name: "Day " + (index + 1),
+  // ✅ SORT + LAST 7 DAYS + REAL DATE FORMAT
+  const sortedHistory = [...history].sort(
+    (a, b) => new Date(a.date) - new Date(b.date)
+  );
+
+  const trendData = sortedHistory.slice(-7).map(item => ({
+    name: new Date(item.date).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short"
+    }),
     hkFemale: item.hkFemalePresent || 0,
     hkMale: item.hkMalePresent || 0,
     technician: item.technicianPresent || 0,
@@ -149,16 +155,20 @@ function Dashboard({ isAdmin }) {
         justifyContent: "space-between",
         alignItems: "center"
       }}>
-        <h2>📊 Manpower Dashboard</h2>
-
         <div>
-          {/* ✅ DOWNLOAD BUTTON */}
+          <h2 style={{ margin: 0 }}>📊 Manpower Dashboard</h2>
+          <div style={{ fontSize: "14px", color: "#666" }}>
+            📅 Today: {today}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "10px" }}>
           <button onClick={downloadExcel} style={btnStyle}>
-            Download Excel
+            ⬇ Download Excel
           </button>
 
           {isAdmin && (
-            <button onClick={handleLogout} style={{ ...btnStyle, marginLeft: "10px" }}>
+            <button onClick={handleLogout} style={btnStyle}>
               Logout
             </button>
           )}
@@ -203,9 +213,9 @@ function Dashboard({ isAdmin }) {
         </BarChart>
       </div>
 
-      {/* 🔹 TREND */}
+      {/* 🔹 TREND GRAPH */}
       <div style={sectionStyle}>
-        <h3>📈 Last 7 Entries Trend</h3>
+        <h3>📈 Last 7 Days Trend</h3>
         <LineChart width={700} height={300} data={trendData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="name" />
