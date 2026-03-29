@@ -6,182 +6,200 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  CartesianGrid,
+  CartesianGrid
 } from "recharts";
 
 function Dashboard({ isAdmin }) {
   const [data, setData] = useState(null);
+  const [history, setHistory] = useState([]);
   const [roles, setRoles] = useState({});
-  const [roleName, setRoleName] = useState("");
-  const [roleValue, setRoleValue] = useState("");
 
-  // 🔹 Fetch latest data
+  const [newRole, setNewRole] = useState("");
+  const [newCount, setNewCount] = useState("");
+
+  const today = new Date().toISOString().split("T")[0];
+
+  // 🔹 Fetch data
   const fetchData = () => {
-    axios
-      .get("https://mak-mtg6.onrender.com/api/manpower")
-      .then((res) => {
+    axios.get("https://mak-mtg6.onrender.com/api/manpower")
+      .then(res => {
         if (res.data && res.data.length > 0) {
-          let latest = res.data[res.data.length - 1];
+          setHistory(res.data);
 
-          // ✅ BACKWARD COMPATIBILITY (old → new)
-          if (!latest.roles) {
-            latest.roles = {
-              "HK Female": latest.hkFemalePresent || 0,
-              "HK Male": latest.hkMalePresent || 0,
-              Technician: latest.technicianPresent || 0,
-              Plumber: latest.plumberPresent || 0,
-            };
-          }
-
+          const latest = res.data[res.data.length - 1];
           setData(latest);
+
+          // Extract dynamic roles
+          const roleData = { ...latest };
+          delete roleData.id;
+          delete roleData.date;
+
+          setRoles(roleData);
         }
       })
-      .catch((err) => console.error("API Error:", err));
+      .catch(err => console.error("API Error:", err));
   };
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  // 🔹 Add role dynamically
+  // 🔹 Add new role dynamically
   const addRole = () => {
-    if (!roleName || !roleValue) return;
+    if (!newRole || !newCount) return;
 
-    setRoles((prev) => ({
+    setRoles(prev => ({
       ...prev,
-      [roleName]: Number(roleValue),
+      [newRole]: Number(newCount)
     }));
 
-    setRoleName("");
-    setRoleValue("");
+    setNewRole("");
+    setNewCount("");
   };
 
-  // 🔹 Submit data (Admin)
+  // 🔹 Submit data
   const handleSubmit = () => {
     const token = localStorage.getItem("auth");
 
-    axios
-      .post(
-        "https://mak-mtg6.onrender.com/api/admin/manpower",
-        {
-          date: new Date().toISOString().split("T")[0],
-          roles: roles,
-        },
-        {
-          headers: {
-            Authorization: "Basic " + token,
-          },
+    const payload = {
+      date: today,
+      ...roles
+    };
+
+    axios.post(
+      "https://mak-mtg6.onrender.com/api/admin/manpower",
+      payload,
+      {
+        headers: {
+          Authorization: "Basic " + token
         }
-      )
+      }
+    )
       .then(() => {
-        alert("✅ Data Saved Successfully");
-        setRoles({});
+        alert("✅ Data Saved");
         fetchData();
       })
-      .catch((err) => console.error("POST Error:", err));
+      .catch(err => {
+        console.error(err);
+        alert("❌ Error saving data");
+      });
   };
 
-  // 🔹 Chart Data
-  const chartData = data?.roles
-    ? Object.entries(data.roles).map(([key, value]) => ({
-        name: key,
-        value: value,
-      }))
-    : [];
+  // 🔹 Chart Data (last 7 days)
+  const chartData = history.slice(-7).map(item => {
+    const obj = {
+      date: item.date
+    };
+
+    Object.keys(item).forEach(key => {
+      if (key !== "id" && key !== "date") {
+        obj[key] = item[key];
+      }
+    });
+
+    return obj;
+  });
+
+  // 🔹 Colors for chart bars
+  const colors = [
+    "#8884d8",
+    "#82ca9d",
+    "#ffc658",
+    "#ff7f50",
+    "#00c49f",
+    "#ffbb28"
+  ];
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>🚀 Manpower Dashboard</h2>
+    <div style={{ padding: "20px", fontFamily: "Arial" }}>
+      
+      {/* HEADER */}
+      <h1>🚀 Manpower Dashboard</h1>
+      <p><b>Date:</b> {today}</p>
 
-      {/* 🔹 Date Display */}
-      {data?.date && (
-        <p>
-          <strong>Date:</strong> {data.date}
-        </p>
-      )}
-
-      {/* 🔹 Cards */}
-      <div
-        style={{
-          display: "flex",
-          gap: "15px",
-          flexWrap: "wrap",
-          marginTop: "20px",
-        }}
-      >
-        {data?.roles &&
-          Object.entries(data.roles).map(([key, value]) => (
-            <div
-              key={key}
-              style={{
-                padding: "15px",
-                border: "1px solid #ccc",
-                borderRadius: "10px",
-                width: "150px",
-                textAlign: "center",
-                background: "#f9f9f9",
-              }}
-            >
-              <h4>{key}</h4>
-              <p style={{ fontSize: "20px", fontWeight: "bold" }}>
-                {value}
-              </p>
-            </div>
-          ))}
+      {/* CARDS */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+        gap: "20px",
+        marginTop: "20px"
+      }}>
+        {Object.entries(roles).map(([key, value]) => (
+          <div key={key} style={{
+            padding: "20px",
+            borderRadius: "12px",
+            background: "#f5f5f5",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+            textAlign: "center"
+          }}>
+            <h3 style={{ textTransform: "capitalize" }}>{key}</h3>
+            <p style={{ fontSize: "20px" }}>{value}</p>
+          </div>
+        ))}
       </div>
 
-      {/* 🔹 Chart */}
-      <h3 style={{ marginTop: "30px" }}>📊 Distribution</h3>
+      {/* CHART */}
+      <h2 style={{ marginTop: "40px" }}>📊 Distribution (Last 7 Days)</h2>
 
       {chartData.length > 0 ? (
         <BarChart width={800} height={300} data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" />
+          <XAxis dataKey="date" />
           <YAxis />
           <Tooltip />
-          <Bar dataKey="value" />
+
+          {Object.keys(roles).map((role, index) => (
+            <Bar
+              key={role}
+              dataKey={role}
+              fill={colors[index % colors.length]}
+            />
+          ))}
         </BarChart>
       ) : (
         <p>No data available</p>
       )}
 
-      {/* 🔹 Admin Panel */}
+      {/* ADMIN PANEL */}
       {isAdmin && (
-        <div style={{ marginTop: "40px" }}>
-          <h3>🔐 Admin Panel</h3>
+        <div style={{
+          marginTop: "40px",
+          padding: "20px",
+          border: "1px solid #ddd",
+          borderRadius: "10px"
+        }}>
+          <h2>🔐 Admin Panel</h2>
 
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
             <input
               placeholder="Role Name"
-              value={roleName}
-              onChange={(e) => setRoleName(e.target.value)}
+              value={newRole}
+              onChange={e => setNewRole(e.target.value)}
             />
-
             <input
               placeholder="Count"
               type="number"
-              value={roleValue}
-              onChange={(e) => setRoleValue(e.target.value)}
+              value={newCount}
+              onChange={e => setNewCount(e.target.value)}
             />
-
             <button onClick={addRole}>Add Role</button>
           </div>
 
-          {/* 🔹 Preview before submit */}
-          {Object.keys(roles).length > 0 && (
-            <div style={{ marginTop: "15px" }}>
-              <h4>Preview:</h4>
-              {Object.entries(roles).map(([k, v]) => (
-                <p key={k}>
-                  {k} : {v}
-                </p>
-              ))}
-            </div>
-          )}
+          <h4>Preview:</h4>
+          {Object.entries(roles).map(([k, v]) => (
+            <p key={k}>{k} : {v}</p>
+          ))}
 
           <button
             onClick={handleSubmit}
-            style={{ marginTop: "15px" }}
+            style={{
+              marginTop: "10px",
+              padding: "10px 20px",
+              background: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "5px"
+            }}
           >
             Submit Data
           </button>
