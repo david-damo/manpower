@@ -9,39 +9,19 @@ function Dashboard({ isAdmin }) {
   const [history, setHistory] = useState([]);
   const [latest, setLatest] = useState(null);
 
-  const [form, setForm] = useState({
-    hkFemalePresent: "",
-    hkMalePresent: "",
-    technicianPresent: "",
-    plumberPresent: "",
-    pm: "",
-    apm: "",
-    accountant: "",
-    helpDesk: "",
-    hkSupervisor: "",
-    hkTechSupervisor: ""
-  });
-
-  const [dynamicRoles, setDynamicRoles] = useState({});
+  const [roles, setRoles] = useState({});
   const [roleName, setRoleName] = useState("");
-  const [roleCount, setRoleCount] = useState("");
+  const [roleValue, setRoleValue] = useState("");
 
   const BASE_URL = "https://mak-mtg6.onrender.com";
 
-  // ✅ Fetch data
+  // ✅ Fetch Data
   const fetchData = () => {
     axios.get(`${BASE_URL}/api/manpower`)
       .then(res => {
-        if (res.data && res.data.length > 0) {
+        if (res.data.length > 0) {
           setHistory(res.data);
-
-          const last = res.data[res.data.length - 1];
-          setLatest(last);
-
-          // Dynamic roles
-          if (last.extraRoles) {
-            setDynamicRoles(last.extraRoles);
-          }
+          setLatest(res.data[res.data.length - 1]);
         }
       })
       .catch(err => console.error(err));
@@ -51,50 +31,51 @@ function Dashboard({ isAdmin }) {
     fetchData();
   }, []);
 
-  // ✅ Add dynamic role
+  // ✅ Add Role dynamically
   const addRole = () => {
-    if (!roleName || !roleCount) return;
+    if (!roleName || roleValue === "") return;
 
-    setDynamicRoles({
-      ...dynamicRoles,
-      [roleName]: Number(roleCount)
+    setRoles({
+      ...roles,
+      [roleName]: Number(roleValue)
     });
 
     setRoleName("");
-    setRoleCount("");
+    setRoleValue("");
   };
 
-  // ✅ Submit
+  // ✅ Submit (KEY FIX)
   const handleSubmit = () => {
     const token = localStorage.getItem("auth");
 
     const payload = {
-      ...form,
-      extraRoles: dynamicRoles
+      date: new Date().toISOString().split("T")[0],
+      roles: roles // 🔥 ONLY THIS REQUIRED
     };
+
+    console.log("PAYLOAD:", payload);
 
     axios.post(`${BASE_URL}/api/admin/manpower`, payload, {
       headers: {
-        Authorization: "Basic " + token
+        Authorization: "Basic " + token,
+        "Content-Type": "application/json"
       }
     })
       .then(() => {
-        alert("Saved Successfully ✅");
+        alert("✅ Saved");
+        setRoles({});
         fetchData();
       })
       .catch(err => {
         console.error(err);
-        alert("Error saving data ❌");
+        alert("❌ Error saving");
       });
   };
 
   // ✅ Chart Data (last 7 days)
   const chartData = history.slice(-7).map(item => ({
     date: item.date,
-    hkFemale: item.hkFemalePresent || 0,
-    hkMale: item.hkMalePresent || 0,
-    technician: item.technicianPresent || 0,
-    plumber: item.plumberPresent || 0
+    ...item.roles
   }));
 
   return (
@@ -102,32 +83,25 @@ function Dashboard({ isAdmin }) {
 
       <h1>🚀 Manpower Dashboard</h1>
 
-      {/* DATE */}
+      {/* ✅ DISPLAY LATEST */}
       {latest && (
-        <h3>Date: {latest.date}</h3>
-      )}
+        <div>
+          <h3>Date: {latest.date}</h3>
 
-      {/* SUMMARY CARDS */}
-      {latest && (
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
-          <Card title="HK Female" value={latest.hkFemalePresent} />
-          <Card title="HK Male" value={latest.hkMalePresent} />
-          <Card title="Technician" value={latest.technicianPresent} />
-          <Card title="Plumber" value={latest.plumberPresent} />
-
-          <Card title="PM" value={latest.pm} />
-          <Card title="APM" value={latest.apm} />
-          <Card title="Accountant" value={latest.accountant} />
-          <Card title="Help Desk" value={latest.helpDesk} />
-          <Card title="HK Supervisor" value={latest.hkSupervisor} />
-          <Card title="HK Tech Supervisor" value={latest.hkTechSupervisor} />
+          <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+            {latest.roles &&
+              Object.entries(latest.roles).map(([role, value]) => (
+                <Card key={role} title={role} value={value} />
+              ))
+            }
+          </div>
         </div>
       )}
 
-      {/* CHART */}
-      <h2 style={{ marginTop: "30px" }}>📊 Last 7 Days Trend</h2>
+      {/* ✅ GRAPH */}
+      <h2 style={{ marginTop: "30px" }}>📊 Last 7 Days</h2>
 
-      {chartData.length > 0 ? (
+      {chartData.length > 0 && (
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -135,55 +109,44 @@ function Dashboard({ isAdmin }) {
             <YAxis />
             <Tooltip />
 
-            <Bar dataKey="hkFemale" />
-            <Bar dataKey="hkMale" />
-            <Bar dataKey="technician" />
-            <Bar dataKey="plumber" />
+            {/* 🔥 Dynamic Bars */}
+            {latest?.roles &&
+              Object.keys(latest.roles).map(role => (
+                <Bar key={role} dataKey={role} />
+              ))
+            }
+
           </BarChart>
         </ResponsiveContainer>
-      ) : (
-        <p>No data available</p>
       )}
 
-      {/* ADMIN PANEL */}
+      {/* ✅ ADMIN */}
       {isAdmin && (
         <div style={{ marginTop: "40px" }}>
           <h2>🔐 Admin Panel</h2>
 
-          {/* FORM */}
-          {Object.keys(form).map(key => (
-            <input
-              key={key}
-              placeholder={key}
-              value={form[key]}
-              onChange={(e) =>
-                setForm({ ...form, [key]: e.target.value })
-              }
-              style={{ margin: "5px" }}
-            />
-          ))}
-
-          {/* DYNAMIC ROLE */}
-          <h3>Add Custom Role</h3>
+          {/* ADD ROLE */}
           <input
-            placeholder="Role Name"
+            placeholder="Role Name (e.g. PM)"
             value={roleName}
             onChange={(e) => setRoleName(e.target.value)}
           />
+
           <input
             placeholder="Count"
-            value={roleCount}
-            onChange={(e) => setRoleCount(e.target.value)}
+            value={roleValue}
+            onChange={(e) => setRoleValue(e.target.value)}
           />
+
           <button onClick={addRole}>Add Role</button>
 
           {/* PREVIEW */}
-          <h3>Preview:</h3>
-          {Object.entries(dynamicRoles).map(([k, v]) => (
-            <p key={k}>{k} : {v}</p>
+          <h3>Preview</h3>
+          {Object.entries(roles).map(([k, v]) => (
+            <p key={k}>{k}: {v}</p>
           ))}
 
-          <button onClick={handleSubmit}>Submit Data</button>
+          <button onClick={handleSubmit}>Submit</button>
         </div>
       )}
 
@@ -191,18 +154,18 @@ function Dashboard({ isAdmin }) {
   );
 }
 
-// ✅ CARD COMPONENT (Fix for React error #31)
+// ✅ Card
 function Card({ title, value }) {
   return (
     <div style={{
-      padding: "20px",
       border: "1px solid #ccc",
+      padding: "15px",
       borderRadius: "10px",
-      width: "150px",
+      width: "120px",
       textAlign: "center"
     }}>
       <h4>{title}</h4>
-      <h2>{value ?? 0}</h2>
+      <h2>{value}</h2>
     </div>
   );
 }
