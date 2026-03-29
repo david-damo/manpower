@@ -1,23 +1,44 @@
 import { useState } from "react";
-import Dashboard from "./Dashboard";
+import axios from "axios";
 
-function Login() {
-  const [loggedIn, setLoggedIn] = useState(false);
+const API = "https://mak-mtg6.onrender.com";
 
-  const login = () => {
-    const token = btoa("admin:admin123");
-    localStorage.setItem("auth", token);
-    setLoggedIn(true);
+function Login({ setAuth }) {
+  const [user, setUser] = useState("");
+  const [pass, setPass] = useState("");
+
+  const handleLogin = () => {
+    const token = btoa(user + ":" + pass);
+
+    axios.get(`${API}/api/manpower`, {
+      headers: {
+        Authorization: "Basic " + token
+      }
+    })
+    .then(() => {
+      localStorage.setItem("auth", token);
+      setAuth(token);
+      window.location.href = "/admin";
+    })
+    .catch(() => alert("Invalid login"));
   };
-
-  if (loggedIn) {
-    return <Dashboard isAdmin={true} />;
-  }
 
   return (
     <div style={{ padding: "20px" }}>
       <h2>Admin Login</h2>
-      <button onClick={login}>Login</button>
+
+      <input
+        placeholder="Username"
+        onChange={e => setUser(e.target.value)}
+      /><br />
+
+      <input
+        type="password"
+        placeholder="Password"
+        onChange={e => setPass(e.target.value)}
+      /><br />
+
+      <button onClick={handleLogin}>Login</button>
     </div>
   );
 }

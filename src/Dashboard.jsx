@@ -1,173 +1,277 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer
+  BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
+  LineChart, Line, Legend
 } from "recharts";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+
+const API = "https://mak-mtg6.onrender.com";
 
 function Dashboard({ isAdmin }) {
 
+  const [data, setData] = useState(null);
   const [history, setHistory] = useState([]);
-  const [latest, setLatest] = useState(null);
+  const [selectedDate, setSelectedDate] = useState("");
 
-  const [roles, setRoles] = useState({});
-  const [roleName, setRoleName] = useState("");
-  const [roleValue, setRoleValue] = useState("");
+  const [form, setForm] = useState({
+    hkFemalePresent: "",
+    hkMalePresent: "",
+    technicianPresent: "",
+    plumberPresent: ""
+  });
 
-  const BASE_URL = "https://mak-mtg6.onrender.com";
+  // ✅ Current Date
+  const today = new Date().toISOString().split("T")[0];
 
-  // ✅ Fetch Data
+  // 🔹 Fetch data
   const fetchData = () => {
-    axios.get(`${BASE_URL}/api/manpower`)
+    axios.get(`${API}/api/manpower`)
       .then(res => {
-        if (res.data.length > 0) {
+        if (res.data && res.data.length > 0) {
           setHistory(res.data);
-          setLatest(res.data[res.data.length - 1]);
+          setData(res.data[res.data.length - 1]);
         }
       })
-      .catch(err => console.error(err));
+      .catch(err => console.error("API Error:", err));
   };
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  // ✅ Add Role dynamically
-  const addRole = () => {
-    if (!roleName || roleValue === "") return;
+  // 🔹 Filter by date
+  const getFilteredData = () => {
+    if (!selectedDate) return data;
 
-    setRoles({
-      ...roles,
-      [roleName]: Number(roleValue)
-    });
-
-    setRoleName("");
-    setRoleValue("");
+    const filtered = history.find(item => item.date === selectedDate);
+    return filtered || null;
   };
 
-  // ✅ Submit (KEY FIX)
+  const filteredData = getFilteredData();
+
+  // 🔹 Submit
   const handleSubmit = () => {
     const token = localStorage.getItem("auth");
 
-    const payload = {
-      date: new Date().toISOString().split("T")[0],
-      roles: roles // 🔥 ONLY THIS REQUIRED
-    };
-
-    console.log("PAYLOAD:", payload);
-
-    axios.post(`${BASE_URL}/api/admin/manpower`, payload, {
-      headers: {
-        Authorization: "Basic " + token,
-        "Content-Type": "application/json"
-      }
+    axios.post(`${API}/api/admin/manpower`, form, {
+      headers: { Authorization: "Basic " + token }
     })
-      .then(() => {
-        alert("✅ Saved");
-        setRoles({});
-        fetchData();
-      })
-      .catch(err => {
-        console.error(err);
-        alert("❌ Error saving");
+    .then(() => {
+      alert("Data saved successfully");
+      setForm({
+        hkFemalePresent: "",
+        hkMalePresent: "",
+        technicianPresent: "",
+        plumberPresent: ""
       });
+      fetchData();
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Error saving data");
+    });
   };
 
-  // ✅ Chart Data (last 7 days)
-  const chartData = history.slice(-7).map(item => ({
-    date: item.date,
-    ...item.roles
-  }));
+  // 🔹 Logout
+  const handleLogout = () => {
+    localStorage.removeItem("auth");
+    window.location.href = "/";
+  };
 
-  return (
-    <div style={{ padding: "20px" }}>
+  // 🔹 Excel Download
+  const downloadExcel = () => {
+    const exportData = history.map(item => ({
+      Date: item.date || "",
+      HK_Female: item.hkFemalePresent || 0,
+      HK_Male: item.hkMalePresent || 0,
+      Technician: item.technicianPresent || 0,
+      Plumber: item.plumberPresent || 0
+    }));
 
-      <h1>🚀 Manpower Dashboard</h1>
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Manpower Data");
 
-      {/* ✅ DISPLAY LATEST */}
-      {latest && (
-        <div>
-          <h3>Date: {latest.date}</h3>
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array"
+    });
 
-          <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
-            {latest.roles &&
-              Object.entries(latest.roles).map(([role, value]) => (
-                <Card key={role} title={role} value={value} />
-              ))
-            }
-          </div>
-        </div>
-      )}
+    const file = new Blob([excelBuffer], {
+      type: "application/octet-stream"
+    });
 
-      {/* ✅ GRAPH */}
-      <h2 style={{ marginTop: "30px" }}>📊 Last 7 Days</h2>
+    saveAs(file, "manpower_data.xlsx");
+  };
 
-      {chartData.length > 0 && (
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
-            <Tooltip />
+  if (!data) {
+    return <h2 style={{ textAlign: "center" }}>Loading...</h2>;
+  }
 
-            {/* 🔥 Dynamic Bars */}
-            {latest?.roles &&
-              Object.keys(latest.roles).map(role => (
-                <Bar key={role} dataKey={role} />
-              ))
-            }
+  // 🔹 Current distribution chart
+  const chartData = [
+    { name: "HK Female", value: filteredData?.hkFemalePresent || 0 },
+    { name: "HK Male", value: filteredData?.hkMalePresent || 0 },
+    { name: "Technician", value: filteredData?.technicianPresent || 0 },
+    { name: "Plumber", value: filteredData?.plumberPresent || 0 }
+  ];
 
-          </BarChart>
-        </ResponsiveContainer>
-      )}
+  // ✅ LAST 7 CALENDAR DAYS LOGIC (FIXED)
+  const trendData = [];
 
-      {/* ✅ ADMIN */}
-      {isAdmin && (
-        <div style={{ marginTop: "40px" }}>
-          <h2>🔐 Admin Panel</h2>
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
 
-          {/* ADD ROLE */}
-          <input
-            placeholder="Role Name (e.g. PM)"
-            value={roleName}
-            onChange={(e) => setRoleName(e.target.value)}
-          />
+    // format YYYY-MM-DD
+    //const formattedDate = d.toISOString().split("T")[0];
+	const formattedDate = d.toLocaleDateString("en-CA"); // gives YYYY-MM-DD
 
-          <input
-            placeholder="Count"
-            value={roleValue}
-            onChange={(e) => setRoleValue(e.target.value)}
-          />
+    // match with backend data
+    const found = history.find(item => item.date === formattedDate);
 
-          <button onClick={addRole}>Add Role</button>
+    trendData.push({
+      name: d.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short"
+      }),
+      hkFemale: found?.hkFemalePresent || 0,
+      hkMale: found?.hkMalePresent || 0,
+      technician: found?.technicianPresent || 0,
+      plumber: found?.plumberPresent || 0
+    });
+  }
 
-          {/* PREVIEW */}
-          <h3>Preview</h3>
-          {Object.entries(roles).map(([k, v]) => (
-            <p key={k}>{k}: {v}</p>
-          ))}
-
-          <button onClick={handleSubmit}>Submit</button>
-        </div>
-      )}
-
-    </div>
-  );
-}
-
-// ✅ Card
-function Card({ title, value }) {
   return (
     <div style={{
-      border: "1px solid #ccc",
-      padding: "15px",
-      borderRadius: "10px",
-      width: "120px",
-      textAlign: "center"
+      minHeight: "100vh",
+      background: "#f4f6f8",
+      padding: "20px",
+      fontFamily: "Segoe UI"
     }}>
-      <h4>{title}</h4>
-      <h2>{value}</h2>
+
+      {/* HEADER */}
+      <div style={{
+        background: "#fff",
+        padding: "15px",
+        borderRadius: "10px",
+        display: "flex",
+        justifyContent: "space-between"
+      }}>
+        <div>
+          <h2>📊 Manpower Dashboard</h2>
+          <div style={{ color: "#666" }}>📅 Today: {today}</div>
+        </div>
+
+        <div>
+          <button onClick={downloadExcel} style={btn}>Download Excel</button>
+          {isAdmin && <button onClick={handleLogout} style={btn}>Logout</button>}
+        </div>
+      </div>
+
+      {/* DATE FILTER */}
+      <div style={{ marginTop: "15px" }}>
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={e => setSelectedDate(e.target.value)}
+        />
+      </div>
+
+      {/* CARDS */}
+      <div style={{ display: "flex", gap: "15px", marginTop: "20px" }}>
+        {chartData.map((item, i) => (
+          <div key={i} style={card}>
+            <p>{item.name}</p>
+            <h2>{item.value}</h2>
+          </div>
+        ))}
+      </div>
+
+      {/* BAR CHART */}
+      <div style={section}>
+        <h3>Current Distribution</h3>
+        <BarChart width={600} height={300} data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="value" />
+        </BarChart>
+      </div>
+
+      {/* TREND GRAPH */}
+      <div style={section}>
+        <h3>Last 7 Days Trend</h3>
+        <LineChart width={600} height={300} data={trendData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          <Line dataKey="hkFemale" />
+          <Line dataKey="hkMale" />
+          <Line dataKey="technician" />
+          <Line dataKey="plumber" />
+        </LineChart>
+      </div>
+
+      {/* ADMIN FORM */}
+      {isAdmin && (
+        <div style={section}>
+          <h3>Add Data</h3>
+
+          <input placeholder="HK Female"
+            value={form.hkFemalePresent}
+            onChange={e => setForm({ ...form, hkFemalePresent: e.target.value })}
+          />
+          <input placeholder="HK Male"
+            value={form.hkMalePresent}
+            onChange={e => setForm({ ...form, hkMalePresent: e.target.value })}
+          />
+          <input placeholder="Technician"
+            value={form.technicianPresent}
+            onChange={e => setForm({ ...form, technicianPresent: e.target.value })}
+          />
+          <input placeholder="Plumber"
+            value={form.plumberPresent}
+            onChange={e => setForm({ ...form, plumberPresent: e.target.value })}
+          />
+
+          <br /><br />
+          <button onClick={handleSubmit} style={btn}>Submit</button>
+        </div>
+      )}
+
     </div>
   );
 }
+
+// styles
+const card = {
+  background: "#fff",
+  padding: "15px",
+  borderRadius: "10px",
+  textAlign: "center"
+};
+
+const section = {
+  background: "#fff",
+  marginTop: "20px",
+  padding: "15px",
+  borderRadius: "10px"
+};
+
+const btn = {
+  margin: "5px",
+  padding: "8px 12px",
+  background: "#007bff",
+  color: "#fff",
+  border: "none",
+  borderRadius: "6px",
+  cursor: "pointer"
+};
 
 export default Dashboard;
