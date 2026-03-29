@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 
 function Dashboard({ isAdmin }) {
   const [data, setData] = useState(null);
@@ -10,13 +17,26 @@ function Dashboard({ isAdmin }) {
 
   // 🔹 Fetch latest data
   const fetchData = () => {
-    axios.get("https://mak-mtg6.onrender.com/api/manpower")
-      .then(res => {
+    axios
+      .get("https://mak-mtg6.onrender.com/api/manpower")
+      .then((res) => {
         if (res.data && res.data.length > 0) {
-          setData(res.data[res.data.length - 1]);
+          let latest = res.data[res.data.length - 1];
+
+          // ✅ BACKWARD COMPATIBILITY (old → new)
+          if (!latest.roles) {
+            latest.roles = {
+              "HK Female": latest.hkFemalePresent || 0,
+              "HK Male": latest.hkMalePresent || 0,
+              Technician: latest.technicianPresent || 0,
+              Plumber: latest.plumberPresent || 0,
+            };
+          }
+
+          setData(latest);
         }
       })
-      .catch(err => console.error(err));
+      .catch((err) => console.error("API Error:", err));
   };
 
   useEffect(() => {
@@ -27,44 +47,45 @@ function Dashboard({ isAdmin }) {
   const addRole = () => {
     if (!roleName || !roleValue) return;
 
-    setRoles({
-      ...roles,
-      [roleName]: Number(roleValue)
-    });
+    setRoles((prev) => ({
+      ...prev,
+      [roleName]: Number(roleValue),
+    }));
 
     setRoleName("");
     setRoleValue("");
   };
 
-  // 🔹 Submit
+  // 🔹 Submit data (Admin)
   const handleSubmit = () => {
     const token = localStorage.getItem("auth");
 
-    axios.post(
-      "https://mak-mtg6.onrender.com/api/admin/manpower",
-      {
-        date: new Date().toISOString().split("T")[0],
-        roles: roles
-      },
-      {
-        headers: {
-          Authorization: "Basic " + token
+    axios
+      .post(
+        "https://mak-mtg6.onrender.com/api/admin/manpower",
+        {
+          date: new Date().toISOString().split("T")[0],
+          roles: roles,
+        },
+        {
+          headers: {
+            Authorization: "Basic " + token,
+          },
         }
-      }
-    )
-    .then(() => {
-      alert("Saved!");
-      setRoles({});
-      fetchData();
-    })
-    .catch(err => console.error(err));
+      )
+      .then(() => {
+        alert("✅ Data Saved Successfully");
+        setRoles({});
+        fetchData();
+      })
+      .catch((err) => console.error("POST Error:", err));
   };
 
   // 🔹 Chart Data
   const chartData = data?.roles
     ? Object.entries(data.roles).map(([key, value]) => ({
         name: key,
-        value: value
+        value: value,
       }))
     : [];
 
@@ -72,55 +93,98 @@ function Dashboard({ isAdmin }) {
     <div style={{ padding: "20px" }}>
       <h2>🚀 Manpower Dashboard</h2>
 
-      {/* 🔹 Display Cards */}
-      <div style={{ display: "flex", gap: "15px", flexWrap: "wrap" }}>
+      {/* 🔹 Date Display */}
+      {data?.date && (
+        <p>
+          <strong>Date:</strong> {data.date}
+        </p>
+      )}
+
+      {/* 🔹 Cards */}
+      <div
+        style={{
+          display: "flex",
+          gap: "15px",
+          flexWrap: "wrap",
+          marginTop: "20px",
+        }}
+      >
         {data?.roles &&
           Object.entries(data.roles).map(([key, value]) => (
-            <div key={key} style={{
-              padding: "15px",
-              border: "1px solid #ccc",
-              borderRadius: "10px",
-              width: "150px",
-              textAlign: "center"
-            }}>
+            <div
+              key={key}
+              style={{
+                padding: "15px",
+                border: "1px solid #ccc",
+                borderRadius: "10px",
+                width: "150px",
+                textAlign: "center",
+                background: "#f9f9f9",
+              }}
+            >
               <h4>{key}</h4>
-              <p>{value}</p>
+              <p style={{ fontSize: "20px", fontWeight: "bold" }}>
+                {value}
+              </p>
             </div>
           ))}
       </div>
 
       {/* 🔹 Chart */}
       <h3 style={{ marginTop: "30px" }}>📊 Distribution</h3>
-      <BarChart width={600} height={300} data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="name" />
-        <YAxis />
-        <Tooltip />
-        <Bar dataKey="value" />
-      </BarChart>
+
+      {chartData.length > 0 ? (
+        <BarChart width={800} height={300} data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="value" />
+        </BarChart>
+      ) : (
+        <p>No data available</p>
+      )}
 
       {/* 🔹 Admin Panel */}
       {isAdmin && (
-        <div style={{ marginTop: "30px" }}>
-          <h3>Admin Panel</h3>
+        <div style={{ marginTop: "40px" }}>
+          <h3>🔐 Admin Panel</h3>
 
-          <input
-            placeholder="Role Name"
-            value={roleName}
-            onChange={(e) => setRoleName(e.target.value)}
-          />
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <input
+              placeholder="Role Name"
+              value={roleName}
+              onChange={(e) => setRoleName(e.target.value)}
+            />
 
-          <input
-            placeholder="Count"
-            value={roleValue}
-            onChange={(e) => setRoleValue(e.target.value)}
-          />
+            <input
+              placeholder="Count"
+              type="number"
+              value={roleValue}
+              onChange={(e) => setRoleValue(e.target.value)}
+            />
 
-          <button onClick={addRole}>Add Role</button>
+            <button onClick={addRole}>Add Role</button>
+          </div>
 
-          <br /><br />
+          {/* 🔹 Preview before submit */}
+          {Object.keys(roles).length > 0 && (
+            <div style={{ marginTop: "15px" }}>
+              <h4>Preview:</h4>
+              {Object.entries(roles).map(([k, v]) => (
+                <p key={k}>
+                  {k} : {v}
+                </p>
+              ))}
+            </div>
+          )}
 
-          <button onClick={handleSubmit}>Submit Data</button>
+          <button
+            onClick={handleSubmit}
+            style={{ marginTop: "15px" }}
+          >
+            Submit Data
+          </button>
         </div>
       )}
     </div>
