@@ -22,7 +22,6 @@ function Dashboard({ isAdmin }) {
     plumberPresent: ""
   });
 
-  // ✅ Current Date
   const today = new Date().toISOString().split("T")[0];
 
   // 🔹 Fetch data
@@ -44,14 +43,13 @@ function Dashboard({ isAdmin }) {
   // 🔹 Filter by date
   const getFilteredData = () => {
     if (!selectedDate) return data;
-
     const filtered = history.find(item => item.date === selectedDate);
     return filtered || null;
   };
 
   const filteredData = getFilteredData();
 
-  // 🔹 Submit
+  // 🔹 Submit (UNCHANGED)
   const handleSubmit = () => {
     const token = localStorage.getItem("auth");
 
@@ -80,14 +78,14 @@ function Dashboard({ isAdmin }) {
     window.location.href = "/";
   };
 
-  // 🔹 Excel Download
+  // 🔹 Excel Download (FIXED)
   const downloadExcel = () => {
     const exportData = history.map(item => ({
       Date: item.date || "",
-      HK_Female: item.hkFemalePresent || 0,
-      HK_Male: item.hkMalePresent || 0,
-      Technician: item.technicianPresent || 0,
-      Plumber: item.plumberPresent || 0
+      HK_Female: item.roles?.hkFemalePresent || 0,
+      HK_Male: item.roles?.hkMalePresent || 0,
+      Technician: item.roles?.technicianPresent || 0,
+      Plumber: item.roles?.plumberPresent || 0
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -110,26 +108,23 @@ function Dashboard({ isAdmin }) {
     return <h2 style={{ textAlign: "center" }}>Loading...</h2>;
   }
 
-  // 🔹 Current distribution chart
+  // 🔹 Current distribution chart (FIXED)
   const chartData = [
-    { name: "HK Female", value: filteredData?.hkFemalePresent || 0 },
-    { name: "HK Male", value: filteredData?.hkMalePresent || 0 },
-    { name: "Technician", value: filteredData?.technicianPresent || 0 },
-    { name: "Plumber", value: filteredData?.plumberPresent || 0 }
+    { name: "HK Female", value: filteredData?.roles?.hkFemalePresent || 0 },
+    { name: "HK Male", value: filteredData?.roles?.hkMalePresent || 0 },
+    { name: "Technician", value: filteredData?.roles?.technicianPresent || 0 },
+    { name: "Plumber", value: filteredData?.roles?.plumberPresent || 0 }
   ];
 
-  // ✅ LAST 7 CALENDAR DAYS LOGIC (FIXED)
+  // 🔹 Trend Data (FIXED)
   const trendData = [];
 
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
 
-    // format YYYY-MM-DD
-    //const formattedDate = d.toISOString().split("T")[0];
-	const formattedDate = d.toLocaleDateString("en-CA"); // gives YYYY-MM-DD
+    const formattedDate = d.toLocaleDateString("en-CA");
 
-    // match with backend data
     const found = history.find(item => item.date === formattedDate);
 
     trendData.push({
@@ -137,10 +132,10 @@ function Dashboard({ isAdmin }) {
         day: "2-digit",
         month: "short"
       }),
-      hkFemale: found?.hkFemalePresent || 0,
-      hkMale: found?.hkMalePresent || 0,
-      technician: found?.technicianPresent || 0,
-      plumber: found?.plumberPresent || 0
+      hkFemale: found?.roles?.hkFemalePresent || 0,
+      hkMale: found?.roles?.hkMalePresent || 0,
+      technician: found?.roles?.technicianPresent || 0,
+      plumber: found?.roles?.plumberPresent || 0
     });
   }
 
