@@ -126,8 +126,8 @@ function Dashboard({ isAdmin }) {
     d.setDate(d.getDate() - i);
 
     // format YYYY-MM-DD
-    //const formattedDate = d.toISOString().split("T")[0];
-	const formattedDate = d.toLocaleDateString("en-CA"); // gives YYYY-MM-DD
+    const formattedDate = d.toISOString().split("T")[0];
+	//const formattedDate = d.toLocaleDateString("en-CA"); // gives YYYY-MM-DD
 
     // match with backend data
     const found = history.find(item => item.date === formattedDate);
