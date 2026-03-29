@@ -22,7 +22,7 @@ function Dashboard({ isAdmin }) {
     plumberPresent: ""
   });
 
-  // ✅ Current date
+  // ✅ Current Date
   const today = new Date().toISOString().split("T")[0];
 
   // 🔹 Fetch data
@@ -41,14 +41,11 @@ function Dashboard({ isAdmin }) {
     fetchData();
   }, []);
 
-  // 🔹 Date filter
+  // 🔹 Filter by date
   const getFilteredData = () => {
     if (!selectedDate) return data;
 
-    const filtered = history.find(item =>
-      item.date === selectedDate
-    );
-
+    const filtered = history.find(item => item.date === selectedDate);
     return filtered || null;
   };
 
@@ -83,7 +80,7 @@ function Dashboard({ isAdmin }) {
     window.location.href = "/";
   };
 
-  // ✅ Excel Download
+  // 🔹 Excel Download
   const downloadExcel = () => {
     const exportData = history.map(item => ({
       Date: item.date || "",
@@ -113,7 +110,7 @@ function Dashboard({ isAdmin }) {
     return <h2 style={{ textAlign: "center" }}>Loading...</h2>;
   }
 
-  // 🔹 Chart data
+  // 🔹 Current distribution chart
   const chartData = [
     { name: "HK Female", value: filteredData?.hkFemalePresent || 0 },
     { name: "HK Male", value: filteredData?.hkMalePresent || 0 },
@@ -121,21 +118,30 @@ function Dashboard({ isAdmin }) {
     { name: "Plumber", value: filteredData?.plumberPresent || 0 }
   ];
 
-  // ✅ SORT + LAST 7 DAYS + REAL DATE FORMAT
-  const sortedHistory = [...history].sort(
-    (a, b) => new Date(a.date) - new Date(b.date)
-  );
+  // ✅ LAST 7 CALENDAR DAYS LOGIC (FIXED)
+  const trendData = [];
 
-  const trendData = sortedHistory.slice(-7).map(item => ({
-    name: new Date(item.date).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short"
-    }),
-    hkFemale: item.hkFemalePresent || 0,
-    hkMale: item.hkMalePresent || 0,
-    technician: item.technicianPresent || 0,
-    plumber: item.plumberPresent || 0
-  }));
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+
+    // format YYYY-MM-DD
+    const formattedDate = d.toISOString().split("T")[0];
+
+    // match with backend data
+    const found = history.find(item => item.date === formattedDate);
+
+    trendData.push({
+      name: d.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short"
+      }),
+      hkFemale: found?.hkFemalePresent || 0,
+      hkMale: found?.hkMalePresent || 0,
+      technician: found?.technicianPresent || 0,
+      plumber: found?.plumberPresent || 0
+    });
+  }
 
   return (
     <div style={{
@@ -145,66 +151,48 @@ function Dashboard({ isAdmin }) {
       fontFamily: "Segoe UI"
     }}>
 
-      {/* 🔹 HEADER */}
+      {/* HEADER */}
       <div style={{
-        background: "#ffffff",
-        padding: "15px 20px",
-        borderRadius: "12px",
-        boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+        background: "#fff",
+        padding: "15px",
+        borderRadius: "10px",
         display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center"
+        justifyContent: "space-between"
       }}>
         <div>
-          <h2 style={{ margin: 0 }}>📊 Manpower Dashboard</h2>
-          <div style={{ fontSize: "14px", color: "#666" }}>
-            📅 Today: {today}
-          </div>
+          <h2>📊 Manpower Dashboard</h2>
+          <div style={{ color: "#666" }}>📅 Today: {today}</div>
         </div>
 
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button onClick={downloadExcel} style={btnStyle}>
-            ⬇ Download Excel
-          </button>
-
-          {isAdmin && (
-            <button onClick={handleLogout} style={btnStyle}>
-              Logout
-            </button>
-          )}
+        <div>
+          <button onClick={downloadExcel} style={btn}>Download Excel</button>
+          {isAdmin && <button onClick={handleLogout} style={btn}>Logout</button>}
         </div>
       </div>
 
-      {/* 🔹 DATE FILTER */}
-      <div style={{ marginTop: "20px" }}>
-        <label>Select Date: </label>
+      {/* DATE FILTER */}
+      <div style={{ marginTop: "15px" }}>
         <input
           type="date"
           value={selectedDate}
           onChange={e => setSelectedDate(e.target.value)}
-          style={inputStyle}
         />
       </div>
 
-      {/* 🔹 CARDS */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-        gap: "20px",
-        marginTop: "20px"
-      }}>
+      {/* CARDS */}
+      <div style={{ display: "flex", gap: "15px", marginTop: "20px" }}>
         {chartData.map((item, i) => (
-          <div key={i} style={cardStyle}>
-            <p style={{ color: "#777" }}>{item.name}</p>
+          <div key={i} style={card}>
+            <p>{item.name}</p>
             <h2>{item.value}</h2>
           </div>
         ))}
       </div>
 
-      {/* 🔹 BAR CHART */}
-      <div style={sectionStyle}>
-        <h3>📊 Current Distribution</h3>
-        <BarChart width={700} height={300} data={chartData}>
+      {/* BAR CHART */}
+      <div style={section}>
+        <h3>Current Distribution</h3>
+        <BarChart width={600} height={300} data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="name" />
           <YAxis />
@@ -213,58 +201,46 @@ function Dashboard({ isAdmin }) {
         </BarChart>
       </div>
 
-      {/* 🔹 TREND GRAPH */}
-      <div style={sectionStyle}>
-        <h3>📈 Last 7 Days Trend</h3>
-        <LineChart width={700} height={300} data={trendData}>
+      {/* TREND GRAPH */}
+      <div style={section}>
+        <h3>Last 7 Days Trend</h3>
+        <LineChart width={600} height={300} data={trendData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="name" />
           <YAxis />
           <Tooltip />
           <Legend />
-          <Line type="monotone" dataKey="hkFemale" />
-          <Line type="monotone" dataKey="hkMale" />
-          <Line type="monotone" dataKey="technician" />
-          <Line type="monotone" dataKey="plumber" />
+          <Line dataKey="hkFemale" />
+          <Line dataKey="hkMale" />
+          <Line dataKey="technician" />
+          <Line dataKey="plumber" />
         </LineChart>
       </div>
 
-      {/* 🔹 ADMIN FORM */}
+      {/* ADMIN FORM */}
       {isAdmin && (
-        <div style={sectionStyle}>
-          <h3>Add Manpower Data</h3>
+        <div style={section}>
+          <h3>Add Data</h3>
 
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-            gap: "10px",
-            maxWidth: "500px"
-          }}>
-            <input value={form.hkFemalePresent}
-              placeholder="HK Female"
-              onChange={e => setForm({ ...form, hkFemalePresent: e.target.value })}
-              style={inputStyle}
-            />
-            <input value={form.hkMalePresent}
-              placeholder="HK Male"
-              onChange={e => setForm({ ...form, hkMalePresent: e.target.value })}
-              style={inputStyle}
-            />
-            <input value={form.technicianPresent}
-              placeholder="Technician"
-              onChange={e => setForm({ ...form, technicianPresent: e.target.value })}
-              style={inputStyle}
-            />
-            <input value={form.plumberPresent}
-              placeholder="Plumber"
-              onChange={e => setForm({ ...form, plumberPresent: e.target.value })}
-              style={inputStyle}
-            />
-          </div>
+          <input placeholder="HK Female"
+            value={form.hkFemalePresent}
+            onChange={e => setForm({ ...form, hkFemalePresent: e.target.value })}
+          />
+          <input placeholder="HK Male"
+            value={form.hkMalePresent}
+            onChange={e => setForm({ ...form, hkMalePresent: e.target.value })}
+          />
+          <input placeholder="Technician"
+            value={form.technicianPresent}
+            onChange={e => setForm({ ...form, technicianPresent: e.target.value })}
+          />
+          <input placeholder="Plumber"
+            value={form.plumberPresent}
+            onChange={e => setForm({ ...form, plumberPresent: e.target.value })}
+          />
 
-          <button onClick={handleSubmit} style={{ ...btnStyle, marginTop: "10px" }}>
-            Submit
-          </button>
+          <br /><br />
+          <button onClick={handleSubmit} style={btn}>Submit</button>
         </div>
       )}
 
@@ -272,35 +248,28 @@ function Dashboard({ isAdmin }) {
   );
 }
 
-// 🔹 Styles
-const cardStyle = {
+// styles
+const card = {
   background: "#fff",
-  padding: "20px",
-  borderRadius: "12px",
-  boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+  padding: "15px",
+  borderRadius: "10px",
   textAlign: "center"
 };
 
-const sectionStyle = {
+const section = {
   background: "#fff",
   marginTop: "20px",
-  padding: "20px",
-  borderRadius: "12px",
-  boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
+  padding: "15px",
+  borderRadius: "10px"
 };
 
-const inputStyle = {
-  padding: "8px",
-  borderRadius: "6px",
-  border: "1px solid #ccc"
-};
-
-const btnStyle = {
-  padding: "8px 15px",
-  border: "none",
-  borderRadius: "8px",
+const btn = {
+  margin: "5px",
+  padding: "8px 12px",
   background: "#007bff",
   color: "#fff",
+  border: "none",
+  borderRadius: "6px",
   cursor: "pointer"
 };
 
