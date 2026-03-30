@@ -19,10 +19,15 @@ function Dashboard({ isAdmin }) {
     hkFemalePresent: "",
     hkMalePresent: "",
     technicianPresent: "",
-    plumberPresent: ""
+    plumberPresent: "",
+    pm: "",
+    apm: "",
+    accountant: "",
+    helpDesk: "",
+    hkSupervisor: "",
+    hkTechSupervisor: ""
   });
 
-  // ✅ Current Date
   const today = new Date().toISOString().split("T")[0];
 
   // 🔹 Fetch data
@@ -44,7 +49,6 @@ function Dashboard({ isAdmin }) {
   // 🔹 Filter by date
   const getFilteredData = () => {
     if (!selectedDate) return data;
-
     const filtered = history.find(item => item.date === selectedDate);
     return filtered || null;
   };
@@ -64,7 +68,13 @@ function Dashboard({ isAdmin }) {
         hkFemalePresent: "",
         hkMalePresent: "",
         technicianPresent: "",
-        plumberPresent: ""
+        plumberPresent: "",
+        pm: "",
+        apm: "",
+        accountant: "",
+        helpDesk: "",
+        hkSupervisor: "",
+        hkTechSupervisor: ""
       });
       fetchData();
     })
@@ -87,7 +97,13 @@ function Dashboard({ isAdmin }) {
       HK_Female: item.hkFemalePresent || 0,
       HK_Male: item.hkMalePresent || 0,
       Technician: item.technicianPresent || 0,
-      Plumber: item.plumberPresent || 0
+      Plumber: item.plumberPresent || 0,
+      PM: item.pm || 0,
+      APM: item.apm || 0,
+      Accountant: item.accountant || 0,
+      HelpDesk: item.helpDesk || 0,
+      HK_Supervisor: item.hkSupervisor || 0,
+      HK_Tech_Supervisor: item.hkTechSupervisor || 0
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -110,26 +126,29 @@ function Dashboard({ isAdmin }) {
     return <h2 style={{ textAlign: "center" }}>Loading...</h2>;
   }
 
-  // 🔹 Current distribution chart
+  // 🔹 Cards
   const chartData = [
     { name: "HK Female", value: filteredData?.hkFemalePresent || 0 },
     { name: "HK Male", value: filteredData?.hkMalePresent || 0 },
     { name: "Technician", value: filteredData?.technicianPresent || 0 },
-    { name: "Plumber", value: filteredData?.plumberPresent || 0 }
+    { name: "Plumber", value: filteredData?.plumberPresent || 0 },
+    { name: "PM", value: filteredData?.pm || 0 },
+    { name: "APM", value: filteredData?.apm || 0 },
+    { name: "Accountant", value: filteredData?.accountant || 0 },
+    { name: "HelpDesk", value: filteredData?.helpDesk || 0 },
+    { name: "HK Supervisor", value: filteredData?.hkSupervisor || 0 },
+    { name: "HK Tech Supervisor", value: filteredData?.hkTechSupervisor || 0 }
   ];
 
-  // ✅ LAST 7 CALENDAR DAYS LOGIC (FIXED)
+  // 🔹 Trend Data (FIXED DATE LOGIC)
   const trendData = [];
 
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
 
-    // format YYYY-MM-DD
     const formattedDate = d.toISOString().split("T")[0];
-	//const formattedDate = d.toLocaleDateString("en-CA"); // gives YYYY-MM-DD
 
-    // match with backend data
     const found = history.find(item => item.date === formattedDate);
 
     trendData.push({
@@ -140,7 +159,13 @@ function Dashboard({ isAdmin }) {
       hkFemale: found?.hkFemalePresent || 0,
       hkMale: found?.hkMalePresent || 0,
       technician: found?.technicianPresent || 0,
-      plumber: found?.plumberPresent || 0
+      plumber: found?.plumberPresent || 0,
+      pm: found?.pm || 0,
+      apm: found?.apm || 0,
+      accountant: found?.accountant || 0,
+      helpDesk: found?.helpDesk || 0,
+      hkSupervisor: found?.hkSupervisor || 0,
+      hkTechSupervisor: found?.hkTechSupervisor || 0
     });
   }
 
@@ -181,7 +206,7 @@ function Dashboard({ isAdmin }) {
       </div>
 
       {/* CARDS */}
-      <div style={{ display: "flex", gap: "15px", marginTop: "20px" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "15px", marginTop: "20px" }}>
         {chartData.map((item, i) => (
           <div key={i} style={card}>
             <p>{item.name}</p>
@@ -193,7 +218,7 @@ function Dashboard({ isAdmin }) {
       {/* BAR CHART */}
       <div style={section}>
         <h3>Current Distribution</h3>
-        <BarChart width={600} height={300} data={chartData}>
+        <BarChart width={700} height={300} data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="name" />
           <YAxis />
@@ -205,7 +230,7 @@ function Dashboard({ isAdmin }) {
       {/* TREND GRAPH */}
       <div style={section}>
         <h3>Last 7 Days Trend</h3>
-        <LineChart width={600} height={300} data={trendData}>
+        <LineChart width={700} height={300} data={trendData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="name" />
           <YAxis />
@@ -215,6 +240,12 @@ function Dashboard({ isAdmin }) {
           <Line dataKey="hkMale" />
           <Line dataKey="technician" />
           <Line dataKey="plumber" />
+          <Line dataKey="pm" />
+          <Line dataKey="apm" />
+          <Line dataKey="accountant" />
+          <Line dataKey="helpDesk" />
+          <Line dataKey="hkSupervisor" />
+          <Line dataKey="hkTechSupervisor" />
         </LineChart>
       </div>
 
@@ -223,22 +254,15 @@ function Dashboard({ isAdmin }) {
         <div style={section}>
           <h3>Add Data</h3>
 
-          <input placeholder="HK Female"
-            value={form.hkFemalePresent}
-            onChange={e => setForm({ ...form, hkFemalePresent: e.target.value })}
-          />
-          <input placeholder="HK Male"
-            value={form.hkMalePresent}
-            onChange={e => setForm({ ...form, hkMalePresent: e.target.value })}
-          />
-          <input placeholder="Technician"
-            value={form.technicianPresent}
-            onChange={e => setForm({ ...form, technicianPresent: e.target.value })}
-          />
-          <input placeholder="Plumber"
-            value={form.plumberPresent}
-            onChange={e => setForm({ ...form, plumberPresent: e.target.value })}
-          />
+          {Object.keys(form).map((key) => (
+            <input
+              key={key}
+              placeholder={key}
+              value={form[key]}
+              onChange={e => setForm({ ...form, [key]: e.target.value })}
+              style={{ margin: "5px" }}
+            />
+          ))}
 
           <br /><br />
           <button onClick={handleSubmit} style={btn}>Submit</button>
@@ -254,7 +278,8 @@ const card = {
   background: "#fff",
   padding: "15px",
   borderRadius: "10px",
-  textAlign: "center"
+  textAlign: "center",
+  minWidth: "120px"
 };
 
 const section = {
