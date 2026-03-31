@@ -90,7 +90,7 @@ function Dashboard({ isAdmin }) {
     window.location.href = "/";
   };
 
-  // 🔹 Excel Download
+  // 🔹 Excel
   const downloadExcel = () => {
     const exportData = history.map(item => ({
       Date: item.date || "",
@@ -108,23 +108,15 @@ function Dashboard({ isAdmin }) {
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Manpower Data");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Manpower");
 
-    const excelBuffer = XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "array"
-    });
-
-    const file = new Blob([excelBuffer], {
-      type: "application/octet-stream"
-    });
+    const buffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const file = new Blob([buffer], { type: "application/octet-stream" });
 
     saveAs(file, "manpower_data.xlsx");
   };
 
-  if (!data) {
-    return <h2 style={{ textAlign: "center" }}>Loading...</h2>;
-  }
+  if (!data) return <h2 style={{ textAlign: "center" }}>Loading...</h2>;
 
   // 🔹 Cards
   const chartData = [
@@ -140,7 +132,7 @@ function Dashboard({ isAdmin }) {
     { name: "HK Tech Supervisor", value: filteredData?.hkTechSupervisor || 0 }
   ];
 
-  // 🔹 Trend Data (FIXED DATE LOGIC)
+  // 🔹 Trend (FIXED DATE LOGIC)
   const trendData = [];
 
   for (let i = 6; i >= 0; i--) {
@@ -152,73 +144,59 @@ function Dashboard({ isAdmin }) {
     const found = history.find(item => item.date === formattedDate);
 
     trendData.push({
-      name: d.toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short"
-      }),
+      name: d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
       hkFemale: found?.hkFemalePresent || 0,
       hkMale: found?.hkMalePresent || 0,
       technician: found?.technicianPresent || 0,
       plumber: found?.plumberPresent || 0,
       pm: found?.pm || 0,
-      apm: found?.apm || 0,
-      accountant: found?.accountant || 0,
-      helpDesk: found?.helpDesk || 0,
-      hkSupervisor: found?.hkSupervisor || 0,
-      hkTechSupervisor: found?.hkTechSupervisor || 0
+      apm: found?.apm || 0
     });
   }
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#f4f6f8",
-      padding: "20px",
-      fontFamily: "Segoe UI"
-    }}>
+    <div style={{ minHeight: "100vh", background: "#f4f6f8", padding: "20px" }}>
 
       {/* HEADER */}
       <div style={{
-        background: "#fff",
-        padding: "15px",
-        borderRadius: "10px",
+        background: "linear-gradient(135deg, #007bff, #00c6ff)",
+        padding: "20px",
+        borderRadius: "12px",
         display: "flex",
-        justifyContent: "space-between"
+        justifyContent: "space-between",
+        color: "#fff"
       }}>
         <div>
           <h2>📊 Manpower Dashboard</h2>
-          <div style={{ color: "#666" }}>📅 Today: {today}</div>
+          <div>📅 Today: {today}</div>
         </div>
 
         <div>
-          <button onClick={downloadExcel} style={btn}>Download Excel</button>
-          {isAdmin && <button onClick={handleLogout} style={btn}>Logout</button>}
+          <button style={btn} onClick={downloadExcel}>Download Excel</button>
+          {isAdmin && <button style={btn} onClick={handleLogout}>Logout</button>}
         </div>
       </div>
 
-      {/* DATE FILTER */}
+      {/* DATE */}
       <div style={{ marginTop: "15px" }}>
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={e => setSelectedDate(e.target.value)}
-        />
+        <input type="date" value={selectedDate}
+          onChange={e => setSelectedDate(e.target.value)} />
       </div>
 
       {/* CARDS */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "15px", marginTop: "20px" }}>
+      <div style={{ display: "flex", gap: "15px", flexWrap: "wrap", marginTop: "20px" }}>
         {chartData.map((item, i) => (
-          <div key={i} style={card}>
+          <div key={i} style={card(i)}>
             <p>{item.name}</p>
             <h2>{item.value}</h2>
           </div>
         ))}
       </div>
 
-      {/* BAR CHART */}
+      {/* BAR */}
       <div style={section}>
         <h3>Current Distribution</h3>
-        <BarChart width={700} height={300} data={chartData}>
+        <BarChart width={600} height={300} data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="name" />
           <YAxis />
@@ -227,10 +205,10 @@ function Dashboard({ isAdmin }) {
         </BarChart>
       </div>
 
-      {/* TREND GRAPH */}
+      {/* LINE */}
       <div style={section}>
         <h3>Last 7 Days Trend</h3>
-        <LineChart width={700} height={300} data={trendData}>
+        <LineChart width={600} height={300} data={trendData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="name" />
           <YAxis />
@@ -242,22 +220,16 @@ function Dashboard({ isAdmin }) {
           <Line dataKey="plumber" />
           <Line dataKey="pm" />
           <Line dataKey="apm" />
-          <Line dataKey="accountant" />
-          <Line dataKey="helpDesk" />
-          <Line dataKey="hkSupervisor" />
-          <Line dataKey="hkTechSupervisor" />
         </LineChart>
       </div>
 
-      {/* ADMIN FORM */}
+      {/* ADMIN */}
       {isAdmin && (
         <div style={section}>
           <h3>Add Data</h3>
 
           {Object.keys(form).map((key) => (
-            <input
-              key={key}
-              placeholder={key}
+            <input key={key} placeholder={key}
               value={form[key]}
               onChange={e => setForm({ ...form, [key]: e.target.value })}
               style={{ margin: "5px" }}
@@ -265,7 +237,7 @@ function Dashboard({ isAdmin }) {
           ))}
 
           <br /><br />
-          <button onClick={handleSubmit} style={btn}>Submit</button>
+          <button style={btn} onClick={handleSubmit}>Submit</button>
         </div>
       )}
 
@@ -273,25 +245,28 @@ function Dashboard({ isAdmin }) {
   );
 }
 
-// styles
-const card = {
-  background: "#fff",
+// 🎨 styles
+const colors = ["#ff6b6b","#4dabf7","#51cf66","#ffd43b","#845ef7","#f783ac","#20c997","#ffa94d"];
+
+const card = (i) => ({
+  background: colors[i % colors.length],
   padding: "15px",
-  borderRadius: "10px",
-  textAlign: "center",
-  minWidth: "120px"
-};
+  borderRadius: "12px",
+  color: "#fff",
+  minWidth: "120px",
+  textAlign: "center"
+});
 
 const section = {
   background: "#fff",
   marginTop: "20px",
-  padding: "15px",
-  borderRadius: "10px"
+  padding: "20px",
+  borderRadius: "12px"
 };
 
 const btn = {
   margin: "5px",
-  padding: "8px 12px",
+  padding: "10px 15px",
   background: "#007bff",
   color: "#fff",
   border: "none",
